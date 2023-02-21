@@ -14,7 +14,7 @@ namespace GraphicsShenanigans
         private static uint _vbo;
         private static uint _ebo;
         private static uint _program;
-
+        private static bool _isWireframe = false;
         public static void Main(string[] args)
         {
             WindowOptions options = WindowOptions.Default;
@@ -153,11 +153,21 @@ void main()
             _gl.DrawElements(PrimitiveType.Triangles, 6, DrawElementsType.UnsignedInt, (void*) 0);
             //_window.Position = new Vector2D<int>(Random.Shared.Next(0,1000), Random.Shared.Next(0,1000)); //HEHE FUNNY, WINDOW GOES BRRRRRRRRRRR
         }//NICE
-
         private static void KeyDown(IKeyboard keyboard, Key key, int keyCode)
         {
             if (key == Key.Escape)
                 _window.Close();
+            if (key == Key.W)
+            {
+                if(!_isWireframe)
+                {
+                    _gl.PolygonMode(GLEnum.FrontAndBack, GLEnum.Line);
+                    _isWireframe = true;
+                    return;
+                }
+                _gl.PolygonMode(GLEnum.FrontAndBack, GLEnum.Fill);
+                _isWireframe = false;
+            }
         }
     }
 }

@@ -1,8 +1,10 @@
 ﻿using System.Drawing;
+using GraphicsShenanigans.Abstractions;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
+using Shader = GraphicsShenanigans.Abstractions.Shader;
 
 namespace GraphicsShenanigans
 {
@@ -10,11 +12,28 @@ namespace GraphicsShenanigans
     {
         private static IWindow _window;
         private static GL _gl;
-        private static uint _vao;
-        private static uint _vbo;
-        private static uint _ebo;
-        private static uint _program;
-        private static bool _isWireframe = false;
+
+        //Our new abstracted objects, here we specify what the types are.
+        private static BufferObject<float> _vbo;
+        private static BufferObject<uint> _ebo;
+        private static VertexArrayObject<float, uint> _vao;
+        private static Shader _shader;
+        private static bool _isWireframe;
+        private static readonly float[] Vertices =
+        {
+            //X    Y      Z     R  G  B  A
+            0.5f,  0.5f, 0.0f, 1, 0, 0, 1,
+            0.5f, -0.5f, 0.0f, 0, 0, 0, 1,
+            -0.5f, -0.5f, 0.0f, 0, 0, 1, 1,
+            -0.5f,  0.5f, 0.5f, 0, 0, 0, 1
+        };
+
+        private static readonly uint[] Indices =
+        {
+            0, 1, 3,
+            1, 2, 3
+        };
+
         public static void Main(string[] args)
         {
             WindowOptions options = WindowOptions.Default;
@@ -43,98 +62,21 @@ namespace GraphicsShenanigans
             Console.WriteLine("Windowing API: " + _window.API);
             Console.WriteLine("Load!");
             _gl = _window.CreateOpenGL();
-            _vao = _gl.GenVertexArray();
-            _gl.BindVertexArray(_vao);
-            uint[] indices =
-            {
-                0u, 1u, 3u,
-                1u, 2u, 3u
-            };
-            float[] vertices =
-            {
-                0.5f,  0.5f, 0.0f,
-                0.5f, -0.5f, 0.0f,
-                -0.5f, -0.5f, 0.0f,
-                -0.5f,  0.5f, 0.0f
-            };
-            _vbo = _gl.GenBuffer();
-            _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vbo);
-            fixed (float* buf = vertices)
-                _gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint) (vertices.Length * sizeof(float)), buf, BufferUsageARB.StaticDraw);
-            _ebo = _gl.GenBuffer();
-            
-            _gl.BindBuffer(BufferTargetARB.ElementArrayBuffer, _ebo);
-            fixed (uint* buf = indices)
-                _gl.BufferData(BufferTargetARB.ElementArrayBuffer, (nuint) (indices.Length * sizeof(uint)), buf, BufferUsageARB.StaticDraw);
-            // SHADER BULLSHIT
-            const string vertexCode = @"
-#version 330 core
-
-layout (location = 0) in vec3 aPosition;
-
-void main()
-{
-    gl_Position = vec4(aPosition, 1.0);
-}";
-
-            const string fragmentCode = @"
-#version 330 core
-
-out vec4 out_color;
-
-void main()
-{
-    out_color = vec4(1.0, 0.5, 0.2, 1.0);
-}";
-            //SHADER COMPILATION
-            uint vertexShader = _gl.CreateShader(ShaderType.VertexShader);
-            _gl.ShaderSource(vertexShader, vertexCode);
-            
-            _gl.CompileShader(vertexShader);
-
-            _gl.GetShader(vertexShader, ShaderParameterName.CompileStatus, out int vStatus);
-            if (vStatus != (int) GLEnum.True)
-                throw new Exception("Vertex shader failed to compile: " + _gl.GetShaderInfoLog(vertexShader));
-            uint fragmentShader = _gl.CreateShader(ShaderType.FragmentShader);
-            _gl.ShaderSource(fragmentShader, fragmentCode);
-
-            _gl.CompileShader(fragmentShader);
-            
-            _gl.GetShader(fragmentShader, ShaderParameterName.CompileStatus, out int fStatus);
-            if (fStatus != (int) GLEnum.True)
-                throw new Exception("Fragment shader failed to compile: " + _gl.GetShaderInfoLog(fragmentShader));
-            //LOTSA COMPILIN' AND CREATING A PROGRAM (A PACK OF VERTEX AND FRAGMENT SHADERS [A PIPELINE ?] )
-            
-            _program = _gl.CreateProgram();
-            _gl.AttachShader(_program, vertexShader);
-            _gl.AttachShader(_program, fragmentShader);
-            //LINKIN' SHADERS
-            _gl.LinkProgram(_program);
-
-            _gl.GetProgram(_program, ProgramPropertyARB.LinkStatus, out int lStatus);
-            if (lStatus != (int) GLEnum.True)
-                throw new Exception("Program failed to link: " + _gl.GetProgramInfoLog(_program));
-            
-            //DELETING SHADERS from memory leaving them only in pipeline ??? 
-            _gl.DetachShader(_program, vertexShader);
-            _gl.DetachShader(_program, fragmentShader);
-            _gl.DeleteShader(vertexShader);
-            _gl.DeleteShader(fragmentShader);
-            
-            //EM… memory MAGIC
-            const uint positionLoc = 0;
-            _gl.EnableVertexAttribArray(positionLoc);
-            _gl.VertexAttribPointer(positionLoc, 3, VertexAttribPointerType.Float, false, 3 * sizeof(float), (void*) 0);
-            
-            _gl.BindVertexArray(0);
-            _gl.BindBuffer(BufferTargetARB.ArrayBuffer, 0);
-            _gl.BindBuffer(BufferTargetARB.ElementArrayBuffer, 0);
-            
-            
-            _gl.ClearColor(Color.Black);
             IInputContext input = _window.CreateInput();
             for (int i = 0; i < input.Keyboards.Count; i++)
+            {
                 input.Keyboards[i].KeyDown += KeyDown;
+            }
+            //Instantiating our new abstractions
+            _ebo = new BufferObject<uint>(_gl, Indices, BufferTargetARB.ElementArrayBuffer);
+            _vbo = new BufferObject<float>(_gl, Vertices, BufferTargetARB.ArrayBuffer);
+            _vao = new VertexArrayObject<float, uint>(_gl, _vbo, _ebo);
+
+            //Telling the _vao object how to lay out the attribute pointers
+            _vao.VertexAttributePointer(0, 3, VertexAttribPointerType.Float, 7, 0);
+            _vao.VertexAttributePointer(1, 4, VertexAttribPointerType.Float, 7, 3);
+
+            _shader = new Shader(_gl, "Shaders/shader.vert", "Shaders/shader.frag");
         }
 
         // These two methods are unused for this tutorial, aside from the logging we added earlier.
@@ -145,11 +87,16 @@ void main()
 
         private static unsafe void OnRender(double dt)
         {
-            _gl.Clear(ClearBufferMask.ColorBufferBit);
+            _gl.Clear((uint) ClearBufferMask.ColorBufferBit);
+
+            //Binding and using our VAO and shader.
+            _vao.Bind();
+            _shader.Use();
+            //Setting a uniform.
+            _shader.SetUniform("uBlue", (float) Math.Sin(DateTime.Now.Millisecond / 1000f * Math.PI));
+            
             //Console.WriteLine("Render! FPS: "+ (1 / dt).ToString("0"));
             //DRAWIN' DAS SHIT 
-            _gl.BindVertexArray(_vao);
-            _gl.UseProgram(_program);
             _gl.DrawElements(PrimitiveType.Triangles, 6, DrawElementsType.UnsignedInt, (void*) 0);
             //_window.Position = new Vector2D<int>(Random.Shared.Next(0,1000), Random.Shared.Next(0,1000)); //HEHE FUNNY, WINDOW GOES BRRRRRRRRRRR
         }//NICE
@@ -168,6 +115,14 @@ void main()
                 _gl.PolygonMode(GLEnum.FrontAndBack, GLEnum.Fill);
                 _isWireframe = false;
             }
+        }
+        private static void OnClose()
+        {
+            //Remember to dispose all the instances.
+            _vbo.Dispose();
+            _ebo.Dispose();
+            _vao.Dispose();
+            _shader.Dispose();
         }
     }
 }

@@ -7,7 +7,14 @@
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
-
+    <ItemGroup>
+        <None Update="Shaders/shader.frag">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="Shaders/shader.vert">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
     <ItemGroup>
       <PackageReference Include="Silk.NET.Core" Version="2.16.0" />
       <PackageReference Include="Silk.NET.Direct3D.Compilers" Version="2.16.0" />

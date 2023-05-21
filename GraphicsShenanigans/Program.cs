@@ -5,28 +5,34 @@ using Silk.NET.Maths;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
 using Shader = GraphicsShenanigans.Abstractions.Shader;
+using Texture = GraphicsShenanigans.Abstractions.Texture;
 
 namespace GraphicsShenanigans
 {
     public class Program
     {
         private static IWindow _window;
-        private static GL _gl;
+        private static GL Gl;
 
         //Our new abstracted objects, here we specify what the types are.
-        private static BufferObject<float> _vbo;
-        private static BufferObject<uint> _ebo;
-        private static VertexArrayObject<float, uint> _vao;
-        private static Shader _shader;
+        private static BufferObject<float> Vbo;
+        private static BufferObject<uint> Ebo;
+        private static VertexArrayObject<float, uint> Vao;
+        private static Shader Shader;
+        private static Texture Texture;
+
+        
         private static bool _isWireframe;
+        // OpenGL has image origin in the bottom-left corner.
         private static readonly float[] Vertices =
         {
-            //X    Y      Z     R  G  B  A
-            0.5f,  0.5f, 0.0f, 1, 0, 0, 1,
-            0.5f, -0.5f, 0.0f, 0, 0, 0, 1,
-            -0.5f, -0.5f, 0.0f, 0, 0, 1, 1,
-            -0.5f,  0.5f, 0.5f, 0, 0, 0, 1
+            //X    Y      Z     U   V
+            0.5f,  0.5f, 0.0f, 1f, 0f,
+            0.5f, -0.5f, 0.0f, 1f, 1f,
+            -0.5f, -0.5f, 0.0f, 0f, 1f,
+            -0.5f,  0.5f, 0.5f, 0f, 0f
         };
+
 
         private static readonly uint[] Indices =
         {
@@ -47,6 +53,7 @@ namespace GraphicsShenanigans
             _window.Update += OnUpdate;
             _window.Render += OnRender;
             _window.Resize += WindowResize;
+            _window.Closing += OnClose;
             _window.Run();
         }
 
@@ -54,30 +61,33 @@ namespace GraphicsShenanigans
         {
             Console.WriteLine("Resized to : " + size);
         }
-        private static unsafe void OnLoad()
+        private static void OnLoad()
         {
             Console.WriteLine("Monitor aspect ratio: " + _window.Monitor.VideoMode.AspectRatioEstimate.Value);
             Console.WriteLine("Window size: " + _window.Size);
             Console.WriteLine("VSYNC: " + _window.VSync);
             Console.WriteLine("Windowing API: " + _window.API);
             Console.WriteLine("Load!");
-            _gl = _window.CreateOpenGL();
+            Gl = _window.CreateOpenGL();
             IInputContext input = _window.CreateInput();
             for (int i = 0; i < input.Keyboards.Count; i++)
             {
                 input.Keyboards[i].KeyDown += KeyDown;
             }
             //Instantiating our new abstractions
-            _ebo = new BufferObject<uint>(_gl, Indices, BufferTargetARB.ElementArrayBuffer);
-            _vbo = new BufferObject<float>(_gl, Vertices, BufferTargetARB.ArrayBuffer);
-            _vao = new VertexArrayObject<float, uint>(_gl, _vbo, _ebo);
+            Ebo = new BufferObject<uint>(Gl, Indices, BufferTargetARB.ElementArrayBuffer);
+            Vbo = new BufferObject<float>(Gl, Vertices, BufferTargetARB.ArrayBuffer);
+            Vao = new VertexArrayObject<float, uint>(Gl, Vbo, Ebo);
 
-            //Telling the _vao object how to lay out the attribute pointers
-            _vao.VertexAttributePointer(0, 3, VertexAttribPointerType.Float, 7, 0);
-            _vao.VertexAttributePointer(1, 4, VertexAttribPointerType.Float, 7, 3);
+            //Telling the Vao object how to lay out the attribute pointers
+            Vao.VertexAttributePointer(0, 3, VertexAttribPointerType.Float, 7, 0);
+            Vao.VertexAttributePointer(1, 4, VertexAttribPointerType.Float, 7, 3);
 
-            _shader = new Shader(_gl, "Shaders/shader.vert", "Shaders/shader.frag");
+            Shader = new Shader(Gl, "Shaders/shader.vert", "Shaders/shader.frag");
+            Texture = new Texture(Gl, "Textures/silk.png");
+
         }
+        
 
         // These two methods are unused for this tutorial, aside from the logging we added earlier.
         private static void OnUpdate(double dt)
@@ -87,17 +97,20 @@ namespace GraphicsShenanigans
 
         private static unsafe void OnRender(double dt)
         {
-            _gl.Clear((uint) ClearBufferMask.ColorBufferBit);
+            Gl.Clear((uint) ClearBufferMask.ColorBufferBit);
 
             //Binding and using our VAO and shader.
-            _vao.Bind();
-            _shader.Use();
+            Vao.Bind();
+            Shader.Use();
+            //Bind a texture and and set the uTexture0 to use texture0.
+            Texture.Bind(TextureUnit.Texture0);
+            Shader.SetUniform("uTexture0", 0);
             //Setting a uniform.
-            _shader.SetUniform("uBlue", (float) Math.Sin(DateTime.Now.Millisecond / 1000f * Math.PI));
+            //Shader.SetUniform("uBlue", (float) Math.Sin(DateTime.Now.Millisecond / 1000f * Math.PI));
             
             //Console.WriteLine("Render! FPS: "+ (1 / dt).ToString("0"));
             //DRAWIN' DAS SHIT 
-            _gl.DrawElements(PrimitiveType.Triangles, 6, DrawElementsType.UnsignedInt, (void*) 0);
+            Gl.DrawElements(PrimitiveType.Triangles, 6, DrawElementsType.UnsignedInt, (void*) 0);
             //_window.Position = new Vector2D<int>(Random.Shared.Next(0,1000), Random.Shared.Next(0,1000)); //HEHE FUNNY, WINDOW GOES BRRRRRRRRRRR
         }//NICE
         private static void KeyDown(IKeyboard keyboard, Key key, int keyCode)
@@ -108,21 +121,23 @@ namespace GraphicsShenanigans
             {
                 if(!_isWireframe)
                 {
-                    _gl.PolygonMode(GLEnum.FrontAndBack, GLEnum.Line);
+                    Gl.PolygonMode(GLEnum.FrontAndBack, GLEnum.Line);
                     _isWireframe = true;
                     return;
                 }
-                _gl.PolygonMode(GLEnum.FrontAndBack, GLEnum.Fill);
+                Gl.PolygonMode(GLEnum.FrontAndBack, GLEnum.Fill);
                 _isWireframe = false;
             }
         }
         private static void OnClose()
         {
             //Remember to dispose all the instances.
-            _vbo.Dispose();
-            _ebo.Dispose();
-            _vao.Dispose();
-            _shader.Dispose();
+            Console.WriteLine("EXITING");
+            Vbo.Dispose();
+            Ebo.Dispose();
+            Vao.Dispose();
+            Shader.Dispose();
+            
         }
     }
 }

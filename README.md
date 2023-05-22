@@ -4,6 +4,6 @@ C# Graphics Shenanigans project aimed for experimentation with OpenSource SILK.N
 
 
 
-###LICENSE
+### LICENSE
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

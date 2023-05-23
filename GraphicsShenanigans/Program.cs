@@ -55,6 +55,7 @@ namespace GraphicsShenanigans
             _window.Resize += WindowResize;
             _window.Closing += OnClose;
             _window.Run();
+            _window.Dispose();
         }
 
         private static void WindowResize(Vector2D<int> size)
@@ -80,12 +81,12 @@ namespace GraphicsShenanigans
             Vao = new VertexArrayObject<float, uint>(Gl, Vbo, Ebo);
 
             //Telling the Vao object how to lay out the attribute pointers
-            Vao.VertexAttributePointer(0, 3, VertexAttribPointerType.Float, 7, 0);
-            Vao.VertexAttributePointer(1, 4, VertexAttribPointerType.Float, 7, 3);
+            Vao.VertexAttributePointer(0, 3, VertexAttribPointerType.Float, 5, 0);
+            Vao.VertexAttributePointer(1, 2, VertexAttribPointerType.Float, 5, 3);
 
             Shader = new Shader(Gl, "Shaders/shader.vert", "Shaders/shader.frag");
-            Texture = new Texture(Gl, "Textures/silk.png");
-
+            Texture = new Texture(Gl, "Textures/minecraftIcon.png");
+            
         }
         
 
@@ -110,13 +111,14 @@ namespace GraphicsShenanigans
             
             //Console.WriteLine("Render! FPS: "+ (1 / dt).ToString("0"));
             //DRAWIN' DAS SHIT 
-            Gl.DrawElements(PrimitiveType.Triangles, 6, DrawElementsType.UnsignedInt, (void*) 0);
+            Gl.DrawElements(PrimitiveType.Triangles, (uint) Indices.Length, DrawElementsType.UnsignedInt, null);
             //_window.Position = new Vector2D<int>(Random.Shared.Next(0,1000), Random.Shared.Next(0,1000)); //HEHE FUNNY, WINDOW GOES BRRRRRRRRRRR
         }//NICE
         private static void KeyDown(IKeyboard keyboard, Key key, int keyCode)
         {
             if (key == Key.Escape)
                 _window.Close();
+            Console.WriteLine(key);
             if (key == Key.W)
             {
                 if(!_isWireframe)

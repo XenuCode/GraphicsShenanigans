@@ -6,7 +6,7 @@ namespace GraphicsShenanigans.Abstractions;
 public class Texture : IDisposable
 {
     private uint _handle;
-    private GL GL;
+    private GL _gl;
 
     /// <summary>
     /// Loads texture from a specified path
@@ -15,9 +15,9 @@ public class Texture : IDisposable
     /// <param name="path">path to texture</param>
     public unsafe Texture(GL gl, string path)
     {
-        GL = gl;
+        _gl = gl;
 
-        _handle = GL.GenTexture();
+        _handle = _gl.GenTexture();
         Bind();
 
         //Loading an image using imagesharp.
@@ -54,17 +54,17 @@ public class Texture : IDisposable
     public unsafe Texture(GL gl, Span<byte> data, uint width, uint height)
     {
         //Saving the gl instance.
-        GL = gl;
+        _gl = gl;
 
         //Generating the opengl handle;
-        _handle = GL.GenTexture();
+        _handle = _gl.GenTexture();
         Bind();
 
         //We want the ability to create a texture using data generated from code as well.
         fixed (void* d = &data[0])
         {
             //Setting the data of a texture.
-            GL.TexImage2D(TextureTarget.Texture2D, 0, (int) InternalFormat.Rgba, width, height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, d);
+            _gl.TexImage2D(TextureTarget.Texture2D, 0, (int) InternalFormat.Rgba, width, height, 0, PixelFormat.Rgba, PixelType.UnsignedByte, d);
             SetParameters();
         }
     }
@@ -72,14 +72,14 @@ public class Texture : IDisposable
     private void SetParameters()
     {
         //Setting some texture perameters so the texture behaves as expected.
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int) GLEnum.ClampToEdge);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int) GLEnum.ClampToEdge);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int) GLEnum.LinearMipmapLinear);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int) GLEnum.Linear);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureBaseLevel, 0);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMaxLevel, 8);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int) GLEnum.ClampToEdge);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int) GLEnum.ClampToEdge);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int) GLEnum.LinearMipmapLinear);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int) GLEnum.Linear);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureBaseLevel, 0);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMaxLevel, 8);
         //Generating mipmaps.
-        GL.GenerateMipmap(TextureTarget.Texture2D);
+        _gl.GenerateMipmap(TextureTarget.Texture2D);
     }
 
     /// <summary>
@@ -89,9 +89,9 @@ public class Texture : IDisposable
     public void Bind(TextureUnit textureSlot = TextureUnit.Texture0)
     {
         //When we bind a texture we can choose which texture slot we can bind it to.
-        GL.ActiveTexture(textureSlot);
+        _gl.ActiveTexture(textureSlot);
         
-        GL.BindTexture(TextureTarget.Texture2D, _handle);
+        _gl.BindTexture(TextureTarget.Texture2D, _handle);
     }
     /// <summary>
     /// Disposes of texture
@@ -99,6 +99,6 @@ public class Texture : IDisposable
     public void Dispose()
     {
         //In order to dispose we need to delete the opengl handle for the texure.
-        GL.DeleteTexture(_handle);
+        _gl.DeleteTexture(_handle);
     }
 }

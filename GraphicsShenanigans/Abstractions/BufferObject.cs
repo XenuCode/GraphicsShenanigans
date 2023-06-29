@@ -9,32 +9,32 @@ public class BufferObject<TDataType> : IDisposable
     //Most of the time you would want to abstract items to make things like this invisible.
     private uint _handle;
     private BufferTargetARB _bufferType;
-    private GL GL;
+    private GL _gl;
 
     public unsafe BufferObject(GL gl, Span<TDataType> data, BufferTargetARB bufferType)
     {
         //Setting the gl instance and storing our buffer type.
-        GL = gl;
+        _gl = gl;
         _bufferType = bufferType;
 
         //Getting the handle, and then uploading the data to said handle.
-        _handle = GL.GenBuffer();
+        _handle = _gl.GenBuffer();
         Bind();
         fixed (void* d = data)
         {
-            GL.BufferData(bufferType, (nuint) (data.Length * sizeof(TDataType)), d, BufferUsageARB.StaticDraw);
+            _gl.BufferData(bufferType, (nuint) (data.Length * sizeof(TDataType)), d, BufferUsageARB.StaticDraw);
         }
     }
 
     public void Bind()
     {
         //Binding the buffer object, with the correct buffer type.
-        GL.BindBuffer(_bufferType, _handle);
+        _gl.BindBuffer(_bufferType, _handle);
     }
 
     public void Dispose()
     {
         //Remember to delete our buffer.
-        GL.DeleteBuffer(_handle);
+        _gl.DeleteBuffer(_handle);
     }
 }
